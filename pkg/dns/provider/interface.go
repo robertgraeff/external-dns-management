@@ -26,8 +26,8 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
-
 	"github.com/gardener/external-dns-management/pkg/dns"
+	"github.com/gardener/external-dns-management/pkg/dns/provider/direct"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -198,6 +198,12 @@ type DNSHandler interface {
 	Release()
 }
 
+type DNSDirectHandler interface {
+	GetRecordSet(zone DNSHostedZone, dnsName, recordType string) (direct.RecordSet, error)
+	CreateOrUpdateRecordSet(logger logger.LogContext, zone DNSHostedZone, rs direct.RecordSet) error
+	DeleteRecordSet(logger logger.LogContext, zone DNSHostedZone, rs direct.RecordSet) error
+}
+
 type DefaultDNSHandler struct {
 	providerType string
 }
@@ -242,6 +248,8 @@ type DNSProvider interface {
 
 	GetZoneState(zone DNSHostedZone) (DNSZoneState, error)
 	ExecuteRequests(logger logger.LogContext, zone DNSHostedZone, state DNSZoneState, requests []*ChangeRequest) error
+
+	GetDNSDirectHandler() DNSDirectHandler
 
 	Match(dns string) int
 	MatchZone(dns string) int

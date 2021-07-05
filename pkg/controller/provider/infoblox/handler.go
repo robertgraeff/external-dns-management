@@ -27,6 +27,7 @@ import (
 	"strconv"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
+	"github.com/gardener/external-dns-management/pkg/dns/provider/direct"
 	"github.com/pkg/errors"
 
 	"github.com/gardener/external-dns-management/pkg/dns"
@@ -274,4 +275,44 @@ func (h *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHos
 	err := raw.ExecuteRequests(logger, &h.config, h.access, zone, state, reqs)
 	h.ApplyRequests(logger, err, zone, reqs)
 	return err
+}
+
+func (h *Handler) GetRecordSet(zone provider.DNSHostedZone, dnsName, recordType string) (direct.RecordSet, error) {
+	rs, err := h.access.GetRecordSet(dnsName, recordType, zone)
+	if err != nil {
+		return nil, err
+	}
+	d := direct.RecordSet{}
+	for _, r := range rs {
+		d = append(d, r)
+	}
+	return d, nil
+}
+
+func (h *Handler) CreateOrUpdateRecordSet(logger logger.LogContext, zone provider.DNSHostedZone, rs direct.RecordSet) error {
+	var err error
+	for _, r := range rs {
+		if r.GetId() == "" {
+			r0 := h.access.NewRecord(r.GetDNSName(), r.GetType(), r.GetValue(), zone, int64(r.GetTTL()))
+			err = h.access.CreateRecord(r0, zone)
+		} else {
+			err = h.access.UpdateRecord(r.(Record), zone)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return err
+}
+
+func (h *Handler) DeleteRecordSet(logger logger.LogContext, zone provider.DNSHostedZone, rs direct.RecordSet) error {
+	for _, r := range rs {
+		if r.GetId() != "" {
+			err := h.access.DeleteRecord(r.(Record), zone)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }

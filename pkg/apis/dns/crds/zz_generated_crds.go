@@ -511,7 +511,6 @@ spec:
                 type: integer
             required:
             - dnsName
-            - lockId
             - timestamp
             - ttl
             type: object
